@@ -1,9 +1,7 @@
-import json
 from dataclasses import dataclass
 from typing import List, Tuple
 
 FILENAME_IN = "rtl_433.out"
-FILENAME_OUT = "rtl_433.json"
 
 
 # ############### class: Dev1 ################
@@ -72,57 +70,6 @@ class Dev1:
     }
 
     id_map = {"169": "SC91-A", "167": "SC91-B", "211": "SC91-C", "49": "ACRT-01"}
-
-    @classmethod
-    def to_dict(self, dev):
-        dct = {
-            "ID": self.id,
-            "MODEL": self.model,
-            "TIME_RAW": self.time_raw,
-            "TIME_DATE": self.time_date,
-            "TIME_TIME": self.time_time,
-            "TEMPERATURE_RAW": self.temperature_raw,
-            "TEMPERATURE_VALUE_C": self.temperature_value_c,
-            "TEMPERATURE_VALUE_F": self.temperature_value_f,
-            "HUMIDITY_RAW": self.humidity_raw,
-            "HUMIDITY_VALUE": self.humidity_value,
-            "CHANNEL": self.channel,
-            "BATTERY": self.battery,
-            "INTEGRITY": self.integrity,
-        }
-        return dct
-
-    def to_dict(self):
-        dct_dev = {
-            "ID": self.id,
-            "MODEL": self.model,
-            "TIME_RAW": self.time_raw,
-            "TIME_DATE": self.time_date,
-            "TIME_TIME": self.time_time,
-            "TEMPERATURE_RAW": self.temperature_raw,
-            "TEMPERATURE_VALUE_C": self.temperature_value_c,
-            "TEMPERATURE_VALUE_F": self.temperature_value_f,
-            "HUMIDITY_RAW": self.humidity_raw,
-            "HUMIDITY_VALUE": self.humidity_value,
-            "CHANNEL": self.channel,
-            "BATTERY": self.battery,
-            "INTEGRITY": self.integrity,
-        }
-        return dct_dev
-
-
-# ################# write to json  #####################
-
-
-def write_devs_to_json(devs, filename):
-    """Write list of Dev1 objects to a JSON file"""
-    dev_list = [
-        dev.to_dict() for dev in devs
-    ]  # Convert each Dev1 object to a dictionary
-    with open(filename, "w") as file:
-        json.dump(
-            dev_list, file, indent=4
-        )  # Write the list of dictionaries to the file
 
 
 # ################# Convert Temperature #####################
@@ -295,16 +242,6 @@ def main():
         if (i := i + 1) > MAX_LINES:
             break
         print(dev)
-
-    print(f"============= Printing Device JSON ({len(lst_devs)}) =============")
-    i = 0
-    for dev in lst_devs:
-        if (i := i + 1) > MAX_LINES:
-            break
-        dev_dict = dev.to_dict()
-        print(dev_dict)
-
-    write_devs_to_json(lst_devs, FILENAME_OUT)
 
 
 if __name__ == "__main__":
