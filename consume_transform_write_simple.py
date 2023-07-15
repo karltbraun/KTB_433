@@ -9,8 +9,8 @@ import time
 import json
 import logging
 import paho.mqtt.client as mqtt
-from typing import List
-from transform_maps import id_map, model_map, name_map
+from typing import List, Tuple
+from transform_maps import id_map, model_map
 
 """
 from mqtt_secrets import (
@@ -28,6 +28,14 @@ from mqtt_secrets import (
 # output file name
 # FILENAME_OUTPUT = "sensor_readings.txt"
 FILENAME_OUTPUT = ""
+
+# Publish wait time
+#   we don't want to publish every single data collection - not necessary and will fill up files
+#   so we update our local data everytime we get a json data packet, but we only publish
+#   every PUBLISH_WAIT_SECONDS
+
+# PUBLISH_WAIT_SECONDS = 120
+PUBLISH_WAIT_SECONDS = 0
 
 # LOG FILE CONFIGURATION
 """
@@ -60,24 +68,48 @@ logger.addHandler(log_handler)
 logger.setLevel(LOG_LEVEL)
 """
 
+# ################# Convert Temperature #####################
+
+
+def convert_temperature(value: float, unit: str) -> Tuple[float, float]:
+    """Given Temperature and Units ('C' or 'F'), return tuple of (Celsius, Fahrenheit)"""
+    if unit is None:
+        unit = "F"
+    unit = unit.upper()
+
+    if unit == "F":
+        # Convert Fahrenheit to Celsius
+        degrees_f = value
+        degrees_c = round((value - 32) * 5 / 9, 2)
+
+    elif unit == "C":
+        # Convert Celsius to Fahrenheit
+        degrees_c = value
+        degrees_f = round((value * 9 / 5) + 32, 2)
+
+    else:
+        raise ValueError(f"ERROR: bad temperature unit ({unit})")
+
+    return (degrees_c, degrees_f)
+
 
 # ################# publish data  #########################
 
 
 def publish(json_data):
     """Publishes the json data to a file"""
-    print(f"### publish: {json_data}")
+    # print(f"### publish: {json_data}")
     sensor_id = json_data["id"]
-    temp_f = json_data["temp_f"]
+    temperature_F = json_data["temperature_F"]
     humidity = json_data["humidity"]
-    timestamp = f"{json_data['date']} {json_data['time']}"
-    sensor_name = name_map.get(json_data["id"], "****")
+    timestamp = json_data["time"]
+    sensor_name = json_data["name"]
 
     # Check if the sensor already exists in the dictionary
     if sensor_id in dct_sensor_data:
         # Update the existing sensor data
         dct_sensor_data[sensor_id]["data"]["name"] = sensor_name
-        dct_sensor_data[sensor_id]["data"]["temp_f"] = temp_f
+        dct_sensor_data[sensor_id]["data"]["temperature_F"] = temperature_F
         dct_sensor_data[sensor_id]["data"]["humidity"] = humidity
         dct_sensor_data[sensor_id]["data"]["timestamp"] = timestamp
     else:
@@ -86,27 +118,39 @@ def publish(json_data):
             "id": sensor_id,
             "data": {
                 "name": sensor_name,
-                "temp_f": temp_f,
+                "temperature_F": temperature_F,
                 "humidity": humidity,
                 "timestamp": timestamp,
             },
         }
 
-    # Check if 2 minutes have passed since the last write
+    # Check if time to publish
     current_time = time.time()
-    print(f"publish: time: {current_time}: {json_data}")
-    if current_time - publish.last_write_time > 120:  # Check if 2 minutes have passed
+    # print(f"publish: time: {current_time}: {json_data}")
+    if (
+        current_time - publish.last_write_time > PUBLISH_WAIT_SECONDS
+    ):  # only publish periodically
         # Write the updated sensor data to a file
-        print(f"publish: Time to publsih")
-        if FILENAME_OUTPUT == "":
-            for sensor_id, sensor_info in dct_sensor_data.items():
-                json_data = json.dumps(sensor_info["data"])
-                print(f"{sensor_id}: {json_data}\n")
-        else:
+        print(f"---------- time to publish ----------")
+
+        msg = "\n"
+        for sensor_id, sensor_info in dct_sensor_data.items():
+            json_data = sensor_info["data"]
+            # print(f"json_data: {json_data}")
+            id = sensor_id
+            timestamp = json_data["timestamp"]
+            name = json_data["name"]
+            temperature_F = json_data["temperature_F"]
+            humidity = json_data["humidity"]
+            msg = (
+                f"{msg}"
+                f"{timestamp:<20} {id:<10} {name:<10} {temperature_F:<10}F, {humidity}%\n"
+            )
+
+        print(msg)
+        if FILENAME_OUTPUT != "":
             with open(FILENAME_OUTPUT, "w") as file:
-                for sensor_id, sensor_info in dct_sensor_data.items():
-                    json_data = json.dumps(sensor_info["data"])
-                    file.write(f"{sensor_id}: {json_data}\n")
+                print(msg)
 
         publish.last_write_time = current_time  # Update the last write time
 
@@ -124,14 +168,56 @@ def transform_json_data(json_data):
     """converts model and id to human readable values"""
     transformed_data = json_data.copy()
 
+    # transform (normalize) the id (id seems to be an int, although we
+    #   check for string values as well
+    if "id" in transformed_data:
+        id = transformed_data["id"]
+        if id in id_map:
+            id_data = id_map[id]
+            transformed_data["id"] = id_data["idx"]
+            transformed_data["name"] = id_data["name"]
+        else:
+            transformed_data["id"] = "*BAD ID*"
+            transformed_data["name"] = "*BAD NAME*"
+    else:
+        transformed_data["id"] = "*NO ID*"
+        transformed_data["name"] = "*NO NAME*"
+
+    # transform (normalize) the model name
     if "model" in transformed_data:
         model = transformed_data["model"]
         model = model.upper()
         transformed_data["model"] = model_map.get(model, "*BAD MODEL*")
+    else:
+        transformed_data["model"] = "*NO MODEL*"
 
-    if "id" in transformed_data:
-        id = transformed_data["id"]
-        transformed_data["id"] = id_map.get(transformed_data["id"], "*BAD ID*")
+    # Check for temperature.
+    #   if only in celsius convert to fahrenheit and add both
+    #   if only in farhenheit convert to celsius and add both
+
+    if (
+        "temperature_C" not in transformed_data
+        and "temperature_F" not in transformed_data
+    ):
+        raise ValueError("ERROR: No temperature in JSON data\n--{json_data}")
+
+    if "temperature_C" not in transformed_data:
+        temperature_C, temperature_F = convert_temperature(
+            transformed_data["temperature_F"], "F"
+        )
+    elif "temperature_F" not in transformed_data:
+        temperature_C, temperature_F = convert_temperature(
+            transformed_data["temperature_C"], "C"
+        )
+
+    transformed_data["temperature_C"] = temperature_C
+    transformed_data["temperature_F"] = temperature_F
+
+    # Check for humidity
+    #   Some sensors don't have humidity
+
+    if "humidity" not in transformed_data:
+        transformed_data["humidity"] = "*NO HUMIDITY*"
 
     return transformed_data
 
@@ -185,7 +271,7 @@ def consume_transform_publish(file):
         """
 
         transformed_data = transform_json_data(json_data)
-        print(f"*-* consume_transform_publish: {transformed_data}")
+        # print(f"*-* consume_transform_publish: {transformed_data}")
 
         # Publish the transformed data to MQTT
         publish(transformed_data)
