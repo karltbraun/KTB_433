@@ -26,8 +26,8 @@ from mqtt_secrets import (
 #
 
 # output file name
-# FILENAME_OUTPUT = "sensor_readings.txt"
-FILENAME_OUTPUT = ""
+FILENAME_OUTPUT = "./Data/sensor_readings.txt"
+# FILENAME_OUTPUT = ""
 
 # Publish wait time
 #   we don't want to publish every single data collection - not necessary and will fill up files
@@ -131,6 +131,7 @@ def publish(json_data):
         current_time - publish.last_write_time > PUBLISH_WAIT_SECONDS
     ):  # only publish periodically
         # Write the updated sensor data to a file
+
         print(f"---------- time to publish ----------")
 
         msg = "\n"
@@ -150,7 +151,7 @@ def publish(json_data):
         print(msg)
         if FILENAME_OUTPUT != "":
             with open(FILENAME_OUTPUT, "w") as file:
-                print(msg)
+                file.write(msg)
 
         publish.last_write_time = current_time  # Update the last write time
 
@@ -238,37 +239,6 @@ def consume_transform_publish(file):
             print(f"Error: Invalid JSON data - {line.strip()}")
 
         # print(f"**consume_transform_publish: {json_data}")
-        # check for known model
-
-        """
-        if "model" not in json_data:
-            msg = f"WARNING: No model in JSON data, skipping entry\n  {json_data}"
-            # logger.warning(msg)
-            print(msg)
-            continue
-
-        if json_data["model"] not in model_map:
-            msg = f"WARNING: Model not in model_map, skipping entry\n  {json_data}"
-            # logger.warning(msg)
-            print(msg)
-            continue
-
-        # check for known id
-
-        if "id" not in json_data:
-            msg = f"WARNING: No id in JSON data, skipping entry\n  {json_data}"
-            # logger.warning(msg)
-            print(msg)
-            continue
-
-        if json_data["id"] not in id_map:
-            msg = (
-                f"WARNING: id not in id_map, continuing with unknown id\n  {json_data}"
-            )
-            # logger.warning(msg)
-            print(msg)
-            pass
-        """
 
         transformed_data = transform_json_data(json_data)
         # print(f"*-* consume_transform_publish: {transformed_data}")
