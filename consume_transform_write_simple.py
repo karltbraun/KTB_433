@@ -5,6 +5,7 @@
     Presumably the file is consumed by either a web page or other display mechanism
 """
 import sys
+import time
 import json
 import logging
 import paho.mqtt.client as mqtt
@@ -40,15 +41,7 @@ LOGFILE_BACKUP_COUNT = 5
 # output dictionary and list
 #
 
-dct_sensor_1 = {
-    "id": "",
-    "name": "",
-    "temp_f": "",
-    "humidity": "",
-    "date": "",
-    "time": "",
-}
-lst_sensor_readings: List[dct_sensor_1] = []
+dct_sensor_data = {}  # Updated name for the dictionary
 
 #
 # Set up global logging
@@ -68,24 +61,47 @@ logger.setLevel(LOG_LEVEL)
 
 def publish(json_data):
     """Publishes the json data to a file"""
-
-    id = json_data["id"]
-    name = json_data["name"]
+    sensor_id = json_data["id"]
+    sensor_name = json_data["name"]
     temp_f = json_data["temp_f"]
     humidity = json_data["humidity"]
     timestamp = f"{json_data['date']} {json_data['time']}"
 
-    msg = (
-        f"Sensor: {id:<5} - {name:<10}\n"
-        f"  Timestamp: {timestamp}\n"
-        f"  Temp: {temp_f:<5}F\n"
-        f"  Humidity: {humidity:<5}%\n"
-    )
+    # Check if the sensor already exists in the dictionary
+    if sensor_id in dct_sensor_data:
+        # Update the existing sensor data
+        dct_sensor_data[sensor_id]["data"]["name"] = sensor_name
+        dct_sensor_data[sensor_id]["data"]["temp_f"] = temp_f
+        dct_sensor_data[sensor_id]["data"]["humidity"] = humidity
+        dct_sensor_data[sensor_id]["data"]["timestamp"] = timestamp
+    else:
+        # Add a new sensor to the dictionary
+        dct_sensor_data[sensor_id] = {
+            "id": sensor_id,
+            "data": {
+                "name": sensor_name,
+                "temp_f": temp_f,
+                "humidity": humidity,
+                "timestamp": timestamp,
+            },
+        }
 
-    with open(FILENAME_OUTPUT, "w") as f:
-        f.write(msg)
+    # Check if 2 minutes have passed since the last write
+    current_time = time.time()
+    if current_time - publish.last_write_time > 120:  # Check if 2 minutes have passed
+        # Write the updated sensor data to a file
+        with open(FILENAME_OUTPUT, "w") as file:
+            for sensor_id, sensor_info in dct_sensor_data.items():
+                json_data = json.dumps(sensor_info["data"])
+                file.write(f"{sensor_id}: {json_data}\n")
+
+        publish.last_write_time = current_time  # Update the last write time
 
     return
+
+
+########## Initialize the last write time ##########
+publish.last_write_time = time.time()  # Initialize the last write time
 
 
 # ################# transform_json_data #########################
