@@ -10,7 +10,7 @@ import json
 import logging
 import paho.mqtt.client as mqtt
 from typing import List
-from transform_maps import id_map, model_map
+from transform_maps import id_map, model_map, name_map
 
 """
 from mqtt_secrets import (
@@ -26,9 +26,11 @@ from mqtt_secrets import (
 #
 
 # output file name
-FILENAME_OUTPUT = "sensor_readings.txt"
+# FILENAME_OUTPUT = "sensor_readings.txt"
+FILENAME_OUTPUT = ""
 
 # LOG FILE CONFIGURATION
+"""
 LOGFILE_PATH = "/var/log"
 LOGFILE_DIR = "rtl_433_simple"
 LOGFILE_FILENAME = f"{LOGFILE_PATH}/{LOGFILE_DIR}/rtl_433_simple.log"
@@ -36,6 +38,7 @@ LOGFILE_FILENAME = f"{LOGFILE_PATH}/{LOGFILE_DIR}/rtl_433_simple.log"
 LOG_LEVEL = logging.DEBUG
 LOGFILE_MAX_BYTES = 2048
 LOGFILE_BACKUP_COUNT = 5
+"""
 
 #
 # output dictionary and list
@@ -47,6 +50,7 @@ dct_sensor_data = {}  # Updated name for the dictionary
 # Set up global logging
 #
 
+"""
 logger = logging.getLogger()
 log_handler = logging.handlers.RotatingFileHandler(
     LOGFILE_FILENAME, maxBytes=LOGFILE_MAX_BYTES, backupCount=LOGFILE_BACKUP_COUNT
@@ -54,6 +58,7 @@ log_handler = logging.handlers.RotatingFileHandler(
 log_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
 logger.addHandler(log_handler)
 logger.setLevel(LOG_LEVEL)
+"""
 
 
 # ################# publish data  #########################
@@ -61,11 +66,12 @@ logger.setLevel(LOG_LEVEL)
 
 def publish(json_data):
     """Publishes the json data to a file"""
+    print(f"### publish: {json_data}")
     sensor_id = json_data["id"]
-    sensor_name = json_data["name"]
     temp_f = json_data["temp_f"]
     humidity = json_data["humidity"]
     timestamp = f"{json_data['date']} {json_data['time']}"
+    sensor_name = name_map.get(json_data["id"], "****")
 
     # Check if the sensor already exists in the dictionary
     if sensor_id in dct_sensor_data:
@@ -88,12 +94,19 @@ def publish(json_data):
 
     # Check if 2 minutes have passed since the last write
     current_time = time.time()
+    print(f"publish: time: {current_time}: {json_data}")
     if current_time - publish.last_write_time > 120:  # Check if 2 minutes have passed
         # Write the updated sensor data to a file
-        with open(FILENAME_OUTPUT, "w") as file:
+        print(f"publish: Time to publsih")
+        if FILENAME_OUTPUT == "":
             for sensor_id, sensor_info in dct_sensor_data.items():
                 json_data = json.dumps(sensor_info["data"])
-                file.write(f"{sensor_id}: {json_data}\n")
+                print(f"{sensor_id}: {json_data}\n")
+        else:
+            with open(FILENAME_OUTPUT, "w") as file:
+                for sensor_id, sensor_info in dct_sensor_data.items():
+                    json_data = json.dumps(sensor_info["data"])
+                    file.write(f"{sensor_id}: {json_data}\n")
 
         publish.last_write_time = current_time  # Update the last write time
 
@@ -112,14 +125,13 @@ def transform_json_data(json_data):
     transformed_data = json_data.copy()
 
     if "model" in transformed_data:
-        transformed_data["model"] = model_map.get(
-            transformed_data["model"], transformed_data["model"]
-        )
+        model = transformed_data["model"]
+        model = model.upper()
+        transformed_data["model"] = model_map.get(model, "*BAD MODEL*")
 
     if "id" in transformed_data:
-        transformed_data["id"] = id_map.get(
-            transformed_data["id"], transformed_data["id"]
-        )
+        id = transformed_data["id"]
+        transformed_data["id"] = id_map.get(transformed_data["id"], "*BAD ID*")
 
     return transformed_data
 
@@ -132,41 +144,48 @@ def consume_transform_publish(file):
     normalizes the data (transform_json_data) and publishes it to MQTT)
     """
     for line in file:
-        logger.debug(f"Processing: {json_data}")
+        # logger.debug(f"Processing: {json_data}")
 
         try:
             json_data = json.loads(line)
         except json.JSONDecodeError:
             print(f"Error: Invalid JSON data - {line.strip()}")
 
+        # print(f"**consume_transform_publish: {json_data}")
         # check for known model
 
+        """
         if "model" not in json_data:
-            logger.warning(
-                f"WARNING: No model in JSON data, skipping entry\n  {json_data}"
-            )
+            msg = f"WARNING: No model in JSON data, skipping entry\n  {json_data}"
+            # logger.warning(msg)
+            print(msg)
             continue
 
         if json_data["model"] not in model_map:
-            logger.warning(
-                f"WARNING: Model not in model_map, skipping entry\n  {json_data}"
-            )
+            msg = f"WARNING: Model not in model_map, skipping entry\n  {json_data}"
+            # logger.warning(msg)
+            print(msg)
             continue
 
         # check for known id
 
         if "id" not in json_data:
-            logger.warning(
-                f"WARNING: No id in JSON data, skipping entry\n  {json_data}"
-            )
+            msg = f"WARNING: No id in JSON data, skipping entry\n  {json_data}"
+            # logger.warning(msg)
+            print(msg)
             continue
 
         if json_data["id"] not in id_map:
-            logger.warning(
+            msg = (
                 f"WARNING: id not in id_map, continuing with unknown id\n  {json_data}"
             )
+            # logger.warning(msg)
+            print(msg)
+            pass
+        """
 
         transformed_data = transform_json_data(json_data)
+        print(f"*-* consume_transform_publish: {transformed_data}")
 
         # Publish the transformed data to MQTT
         publish(transformed_data)
@@ -182,6 +201,7 @@ def main():
     input_file = sys.stdin
 
     # now do the bulk of the work
+    print("**Starting consume_transform_publish")
     consume_transform_publish(input_file)
 
 
