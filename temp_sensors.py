@@ -5,6 +5,7 @@ from dataclasses import dataclass
 class Sensor_Dev_1:
     fldsiz_id: int = 8
     fldsiz_model: int = 21
+    fldsiz_name: int = 21
     fldsiz_time_raw: int = 22  # Raw time stamp
     fldsiz_time_time: int = 12  # HH:MM:SS.nn
     fldsiz_time_date: int = 11  # YYYY-MM-DD
@@ -20,6 +21,7 @@ class Sensor_Dev_1:
 
     def __init__(self, id: str = "<NULL>"):
         self.id: str = id
+        self.name: str = ""
         self.model: str = ""
         self.time_raw: str = ""
         self.time_time: str = ""
@@ -29,10 +31,8 @@ class Sensor_Dev_1:
         self.temperature_raw: str = ""
         self.temperature_value_f: str = ""
         self.temperature_value_c: str = ""
-        self.temperature_units: str = ""
         self.humidity_raw: str = ""
         self.humidity_value: str = ""
-        self.humidity_units: str = ""
         self.integrity: str = ""
 
     def __str__(self):
@@ -41,18 +41,16 @@ class Sensor_Dev_1:
         time_raw = f"'{self.time_raw}'"
         return (
             f"{self.id:<{self.fldsiz_id}}"
+            f"{self.name:<{self.fldsiz_name}}"
             f"{self.model:<{self.fldsiz_model}}"
             f"{time_raw:<{self.fldsiz_time_raw}}"
             f"{self.time_date:<{self.fldsiz_time_date}}"
             f"{self.time_time:<{self.fldsiz_time_time}}"
             f"{temperature_raw:<{self.fldsiz_temperature_raw}}"
             f"{self.temperature_value_c:<{self.fldsiz_temperature_value}}"
-            f"{'C':<{self.fldsiz_temperature_units}}"
             f"{self.temperature_value_f:<{self.fldsiz_temperature_value}}"
-            f"{'F':<{self.fldsiz_temperature_units}}"
             f"{humidity_raw:<{self.fldsiz_humidity_raw}}"
             f"{self.humidity_value:<{self.fldsiz_humidity_value}}"
-            f"{self.humidity_units:<{self.fldsiz_humidity_units}}"
             f"{self.channel:<{self.fldsiz_channel}}"
             f"{self.battery:<{self.fldsiz_battery}}"
             f"{self.integrity:<{self.fldsiz_integrity}}"
