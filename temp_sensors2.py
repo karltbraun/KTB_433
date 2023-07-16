@@ -169,3 +169,35 @@ class Sensor_Dev_1:
             "integrity": self.integrity,
         }
         return dct
+
+
+# ################ Sensor Reading Stack ################
+class SensorReadingStack:
+    def __init__(self, max_size):
+        self.max_size = max_size
+        self.stack = []
+
+    def push(self, sensor_reading):
+        self.stack.append(sensor_reading)
+        if len(self.stack) > self.max_size:
+            self.stack = self.stack[
+                -self.max_size :
+            ]  # Trim the stack to the specified size
+
+    def pop(self):
+        if self.stack:
+            return self.stack.pop()
+        else:
+            return None
+
+    def peek(self):
+        if self.stack:
+            return self.stack[-1]
+        else:
+            return None
+
+    def is_empty(self):
+        return len(self.stack) == 0
+
+    def size(self):
+        return len(self.stack)
