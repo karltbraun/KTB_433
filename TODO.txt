@@ -1,0 +1,10 @@
+SAT NIGHT - 20230715
+
+both "test_..." files have the working code
+
+Change temp_sensors2.py to temperature_sensors.py
+
+Write the code that will consume the json data from standard input and 
+* print it to the console
+* print it to a file
+* publish it to mqtt
