@@ -150,35 +150,22 @@ class Sensor_Dev_1:
 
     id_map = {"169": "SC91-A", "167": "SC91-B", "211": "SC91-C", "49": "ACRT-01"}
 
-    # @classmethod
     def to_dict(self):
         dct = {
-            "ID": self.id,
-            "MODEL": self.model,
-            "TIME_RAW": self.time_raw,
-            "TIME_DATE": self.time_date,
-            "TIME_TIME": self.time_time,
-            "TEMPERATURE_RAW": self.temperature_raw,
-            "TEMPERATURE_VALUE_C": self.temperature_value_c,
-            "TEMPERATURE_VALUE_F": self.temperature_value_f,
-            "HUMIDITY_RAW": self.humidity_raw,
-            "HUMIDITY_VALUE": self.humidity_value,
-            "CHANNEL": self.channel,
-            "BATTERY": self.battery,
-            "INTEGRITY": self.integrity,
-        }
-        return dct
-
-    def to_dict(self):
-        dct = {
-            "id": self.id_raw,
-            "model": self.model_raw,
-            "time": self.time_raw,
+            "id_raw": self.id_raw,
+            "sensor_name": self.sensor_name,
+            "model_raw": self.model_raw,
+            "model_name": self.model_name,
+            "time_raw": self.time_raw,
+            "time_time": self.time_time,
+            "time_date": self.time_date,
+            "channel": self.channel,
+            "battery_ok": self.battery,
+            "temperature_raw": self.temperature_raw,
             "temperature_C": self.temperature_value_c,
             "temperature_F": self.temperature_value_f,
+            "humidity_raw": self.humidity_raw,
             "humidity": self.humidity_value,
-            "channel": self.channel,
-            "battery_ok": 1 if self.battery == "OK" else 0,
-            "mic": self.integrity,
+            "integrity": self.integrity,
         }
         return dct
