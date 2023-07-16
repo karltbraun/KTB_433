@@ -1,10 +1,11 @@
 import sys
 import json
+import time
 from typing import TextIO, Dict
 from temp_sensors2 import Sensor_Dev_1, SensorReadingStack
 
 MAX_STACK_SIZE: int = 10
-PUBLISH_INTERVAL: int = 15
+PUBLISH_WAIT_TIME_S: int = 60
 
 
 # ######################### publish to console  #########################
@@ -15,12 +16,23 @@ def publish_to_console(sensor_reading: Sensor_Dev_1) -> None:
     print(sensor_reading)
 
 
+# ######################### publish data #########################
+
+
+def publish_data(sensor_stacks: Dict[str, SensorReadingStack]) -> None:
+    # Function to publish the data in the sensor stacks
+    for stack in sensor_stacks.values():
+        if not stack.is_empty():
+            recent_reading: Sensor_Dev_1 = stack.peek()
+            publish_to_console(recent_reading)
+
+
 # ######################### consume - store - publish  #########################
 
 
 def consume_store_publish(file: TextIO) -> None:
     sensor_stacks: Dict[str, SensorReadingStack] = {}
-    iteration: int = 0
+    last_publish_time: float = time.time()
 
     for line in file:
         line = line.strip()
@@ -34,13 +46,10 @@ def consume_store_publish(file: TextIO) -> None:
             sensor_stack: SensorReadingStack = sensor_stacks[sensor_id]
             sensor_stack.push(sensor_reading)
 
-            if iteration % PUBLISH_INTERVAL == 0:
-                for stack in sensor_stacks.values():
-                    if not stack.is_empty():
-                        recent_reading: Sensor_Dev_1 = stack.peek()
-                        publish_to_console(recent_reading)
-
-        iteration += 1
+        current_time: float = time.time()
+        if current_time - last_publish_time >= PUBLISH_WAIT_TIME_S:
+            publish_data(sensor_stacks)
+            last_publish_time = current_time
 
 
 # ######################### Main #########################
