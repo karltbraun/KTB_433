@@ -20,6 +20,6 @@ id_map = {
     },
     49: {
         "idx": "ACRT-01",
-        "name": "OFC-ACRT",
+        "name": "BRZWY-ACRT",
     },
 }
