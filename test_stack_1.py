@@ -1,3 +1,8 @@
+""" test_stack_1.py
+    Working code 20230717
+    Publishes to console and to MQTT with appropriate topics
+    Broker is defined in mqtt_secrets.py; tested with test.mosquitto.org
+"""
 import sys
 import json
 import time
