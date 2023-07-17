@@ -1,10 +1,15 @@
-SAT NIGHT - 20230715
+MON MORNING 20230717
 
-both "test_..." files have the working code
+1. We have a bash script which 
+    starts the rtl_433 program, outputting json
+    Loops over the following:
+        piping the output to rtl_433_publish.py
+        Runs for a specified period of time
+        sleeps for a specified period of time
 
-Change temp_sensors2.py to temperature_sensors.py
+2. Succesfully publishes each sensor to its own topic.
 
-Write the code that will consume the json data from standard input and 
-* print it to the console
-* print it to a file
-* publish it to mqtt
+3. Output is published to MQTT and to the console
+
+TO DO:
+* print it to a file (text, json)
