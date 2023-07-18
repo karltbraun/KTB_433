@@ -35,7 +35,7 @@ PUBLISH_TO_MQTT: bool = True
 def print_startup_info() -> None:
     BORDER_SIZE: int = 80
     print("*" * BORDER_SIZE)
-    print(f"{'trimming':^80}")
+    # print(f"{'trimming':^80}")
 
     msg = (
         f"PUBLISHING TO CONSOLE: {PUBLISH_TO_CONSOLE}\n"
