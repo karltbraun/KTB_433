@@ -18,8 +18,10 @@ from mqtt_secrets import (
     MQTT_PASSWORD,
 )
 
-MAX_STACK_SIZE: int = 10
-PUBLISH_WAIT_TIME_S: int = 60
+MAX_DATA_STORE_TIME: int = 1800  # Maximum data store time in seconds (30 minutes)
+MAX_STACK_SIZE: int = 10  # Maximum size of history stacks
+
+PUBLISH_WAIT_TIME_S: int = 60  # Time between publishing to MQTT broker
 PUBLISH_TO_CONSOLE: bool = True
 PUBLISH_TO_FILE_TEXT: bool = False
 PUBLISH_TO_FILE_JSON: bool = False
@@ -30,7 +32,9 @@ PUBLISH_TO_MQTT: bool = True
 
 
 def print_startup_info() -> None:
-    print("*************************************************")
+    BORDER_SIZE: int = 80
+    print("*" * BORDER_SIZE)
+    print(f"{'trimming':^80}")
 
     msg = (
         f"PUBLISHING TO CONSOLE: {PUBLISH_TO_CONSOLE}\n"
@@ -55,8 +59,32 @@ def print_startup_info() -> None:
         )
         print(msg)
 
-    print("*************************************************")
+    print("*" * BORDER_SIZE)
     return
+
+
+# ######################### trim a specific stack  #########################
+
+
+def trim_stack(sensor_stack: SensorReadingStack) -> None:
+    current_time: float = time.time()
+
+    # Iterate over the stack and remove readings older than MAX_DATA_STORE_TIME
+    while not sensor_stack.is_empty():
+        oldest_reading_time: float = sensor_stack.peek().time_raw
+        if current_time - oldest_reading_time > MAX_DATA_STORE_TIME:
+            sensor_stack.pop()
+        else:
+            break
+
+
+# ######################### trim all stacks  #########################
+
+
+def trim_all_stacks(sensor_stacks: Dict[str, SensorReadingStack]) -> None:
+    # Iterate over all the sensor stacks and call trim_stack for each stack
+    for stack in sensor_stacks.values():
+        trim_stack(stack)
 
 
 # ######################### publish to file  #########################
