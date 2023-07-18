@@ -8,6 +8,7 @@
 import sys
 import json
 import time
+import datetime
 import paho.mqtt.client as mqtt
 from typing import TextIO, Dict
 from temp_sensors2 import Sensor_Dev_1, SensorReadingStack
@@ -71,7 +72,10 @@ def trim_stack(sensor_stack: SensorReadingStack) -> None:
 
     # Iterate over the stack and remove readings older than MAX_DATA_STORE_TIME
     while not sensor_stack.is_empty():
-        oldest_reading_time: float = sensor_stack.peek().time_raw
+        oldest_reading_time_str: str = sensor_stack.peek().time_raw
+        oldest_reading_time: float = datetime.datetime.strptime(
+            oldest_reading_time_str, "%Y-%m-%d %H:%M:%S"
+        ).timestamp()
         if current_time - oldest_reading_time > MAX_DATA_STORE_TIME:
             sensor_stack.pop()
         else:
@@ -186,6 +190,8 @@ def consume_store_publish(file: TextIO) -> None:
         if current_time - last_publish_time >= PUBLISH_WAIT_TIME_S:
             publish_data(sensor_stacks)
             last_publish_time = current_time
+            print("  Trimming stacks")
+            trim_all_stacks(sensor_stacks)
 
 
 # ######################### Main #########################
