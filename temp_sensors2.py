@@ -2,7 +2,15 @@ import json
 from dataclasses import dataclass
 from transform_maps import model_map, id_map
 
+# ######################### round string value  #########################
 
+
+def round_str_value(temperature_F: str) -> str:
+    """Rounds a string value to the nearest integer value and returns it as a string"""
+    return str(round(float(temperature_F)))
+
+
+# ######################### Sensor_Dev_1 class  #########################
 @dataclass
 class Sensor_Dev_1:
     fldsiz_id_raw: int = 8  # Raw ID from sensor
@@ -109,20 +117,24 @@ class Sensor_Dev_1:
 
         # TEMPERATURE
         if "temperature_F" in data:
-            obj.temperature_value_f = data["temperature_F"]
-            obj.temperature_raw = obj.temperature_value_f
-        if "temperature_C" in data:
-            obj.temperature_value_c = data["temperature_C"]
             obj.temperature_raw = (
-                obj.temperature_value_c
-            )  # will override F if both are present
+                obj.temperature_value_f
+            )  # assume fahrenheit holds the raw value
+            obj.temperature_value_f = round_str_value(data["temperature_F"])
+        if "temperature_C" in data:
+            # if both F and C values are present, assume the C value is the 'raw' value
+            obj.temperature_raw = obj.temperature_value_c
+            obj.temperature_value_c = round_str_value(data["temperature_C"])
+        # if we have no temperature readings, make the values indicate that
+        # if we have an F reading or a C reading, but not the other, calculate the missing value
         if obj.temperature_value_f == "" and obj.temperature_value_c == "":
+            obj.temperature_raw = "__"
             obj.temperature_value_f = "__"
             obj.temperature_value_c = "__"
         elif obj.temperature_value_f == "":
-            obj.temperature_value_f = round(obj.temperature_value_c * 9 / 5 + 32, 1)
+            obj.temperature_value_f = round(obj.temperature_value_c * 9 / 5 + 32)
         elif obj.temperature_value_c == "":
-            obj.temperature_value_c = round((obj.temperature_value_f - 32) * 5 / 9, 1)
+            obj.temperature_value_c = round((obj.temperature_value_f - 32) * 5 / 9)
 
         # HUMIDITY
         if "humidity" in data:
