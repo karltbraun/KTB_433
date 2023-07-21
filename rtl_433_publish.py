@@ -13,6 +13,9 @@ import datetime
 import paho.mqtt.client as mqtt
 from typing import TextIO, Dict
 from temp_sensors2 import Sensor_Dev_1, SensorReadingStack
+from mqtt_secrets2 import MQTT_CONFIG
+
+"""
 from mqtt_secrets import (
     MQTT_BROKER_ADDRESS,
     MQTT_BROKER_ADDRESSES,
@@ -23,6 +26,7 @@ from mqtt_secrets import (
     MQTT_PASSWORD,
     MQTT_PASSWORDS,
 )
+"""
 
 MAX_DATA_STORE_TIME: int = 1800  # Maximum data store time in seconds (30 minutes)
 MAX_STACK_SIZE: int = 10  # Maximum size of history stacks
@@ -51,22 +55,9 @@ def print_startup_info() -> None:
     print(msg)
 
     if PUBLISH_TO_MQTT:
-        print("---------------- Single MQTT Broker ----------------")
-        msg = (
-            f"MQTT BROKER ADDRESS: {MQTT_BROKER_ADDRESS}\n"
-            f"MQTT BROKER PORT: {MQTT_BROKER_PORT}\n"
-            f"MQTT USERNAME: {MQTT_USERNAME}\n"
-            f"MQTT PASSWORD: {MQTT_PASSWORD}\n"
-        )
-        print(msg)
-
         print("---------------- Multiple MQTT Broker ----------------")
         msg = (
-            f"MQTT BROKER ADDRESS: {MQTT_BROKER_ADDRESSES}\n"
-            f"MQTT BROKER PORT: {MQTT_BROKER_PORTS}\n"
-            f"MQTT USERNAME: {MQTT_USERNAMES}\n"
-            f"MQTT PASSWORD: {MQTT_PASSWORDS}\n"
-            "\n"
+            f"MQTT Configuration: {MQTT_CONFIG}\n"
             f"PUBLISH_WAIT_TIME_S: {PUBLISH_WAIT_TIME_S}\n"
             f"PUBLISH_TO_CONSOLE: {PUBLISH_TO_CONSOLE}\n"
             f"PUBLISH_TO_FILE_TEXT: {PUBLISH_TO_FILE_TEXT}\n"
@@ -125,29 +116,68 @@ def publish_to_file_as_json(sensor_reading: Sensor_Dev_1) -> None:
 # ######################### publish to MQTT  #########################
 
 
-def publish_to_mqtt(sensor_reading: Sensor_Dev_1) -> None:
-    # Function to publish the sensor reading to an MQTT broker
+# ######################### publish to a single broker  #########################
 
-    # Get the topic leaf name
-    topic_leaf_name: str = sensor_reading.sensor_name
-    topic = f"KTBMES/sensor/readings/{topic_leaf_name}"
+
+def publish_to_broker(
+    br_name: str,
+    br_ip: str,
+    br_port: int,
+    br_user: str,
+    br_pass: str,
+    topic: str,
+    payload: str,
+) -> None:
+    """does the actual publishing to a single mqtt broker"""
+    print(f"--- I would be publishing to:")
+    print(f"\tBroker: {br_name}")
+    print(f"\tIP: {br_ip}")
+    print(f"\tPort: {br_port}")
+    print(f"\tUser: {br_user}")
+    print(f"\tPass: {br_pass}")
+    print(f"\tTopic: {topic}")
+    print(f"\tPayload: {payload}")
 
     client = mqtt.Client()
 
     # Set MQTT broker credentials
-    client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+    client.username_pw_set(br_user, br_pass)
 
     # Connect to MQTT broker
-    client.connect(MQTT_BROKER_ADDRESS, MQTT_BROKER_PORT)
-
-    # Prepare the payload
-    payload = json.dumps(sensor_reading.to_dict())
+    client.connect(br_ip, br_port)
 
     # Publish the payload to a specific MQTT topic
     client.publish(topic, payload)
 
     # Disconnect from MQTT broker
     client.disconnect()
+    return
+
+
+# ######################### publish to all the  brokers  #########################
+
+
+def publish_to_brokers(sensor_reading: Sensor_Dev_1, mqtt_config: dict) -> None:
+    """Function to publish the sensor reading to all active MQTT brokers"""
+
+    # Get the topic leaf name
+    topic_leaf_name: str = sensor_reading.sensor_name
+    topic = f"KTBMES/sensor/readings/{topic_leaf_name}"
+
+    # Prepare the payload
+    payload = json.dumps(sensor_reading.to_dict())
+
+    for broker in mqtt_config.values():
+        publish_to_broker(
+            br_name=broker["MQTT_BROKER_ADDRESS"],
+            br_ip=broker["MQTT_BROKER_ADDRESS"],
+            br_port=broker["MQTT_BROKER_PORT"],
+            br_user=broker["MQTT_USERNAME"],
+            br_pass=broker["MQTT_PASSWORD"],
+            topic=topic,
+            payload=payload,
+        )
+    return
 
 
 # ######################### publish to console  #########################
@@ -177,7 +207,7 @@ def publish_data(sensor_stacks: Dict[str, SensorReadingStack]) -> None:
                 publish_to_file_as_json(recent_reading)
 
             if PUBLISH_TO_MQTT:
-                publish_to_mqtt(recent_reading)
+                publish_to_brokers(recent_reading)
 
 
 # ######################### consume - store - publish  #########################
