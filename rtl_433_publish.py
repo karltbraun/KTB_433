@@ -1,9 +1,10 @@
 """ rtl_433_publish.py
-    testing  code 20230717
+    working  code 20230718
     Publishes to console and to MQTT with appropriate topics
     Broker is defined in mqtt_secrets.py; tested with test.mosquitto.org
     ** 20230717 - adding better start banner
     ** 20230717 - testing with loop bash script
+    ** 20230718 - testing wih Vultr MQTT broker and Vultr Ignition Broker
 """
 import sys
 import json
@@ -14,9 +15,13 @@ from typing import TextIO, Dict
 from temp_sensors2 import Sensor_Dev_1, SensorReadingStack
 from mqtt_secrets import (
     MQTT_BROKER_ADDRESS,
+    MQTT_BROKER_ADDRESSES,
     MQTT_BROKER_PORT,
+    MQTT_BROKER_PORTS,
     MQTT_USERNAME,
+    MQTT_USERNAMES,
     MQTT_PASSWORD,
+    MQTT_PASSWORDS,
 )
 
 MAX_DATA_STORE_TIME: int = 1800  # Maximum data store time in seconds (30 minutes)
@@ -46,11 +51,21 @@ def print_startup_info() -> None:
     print(msg)
 
     if PUBLISH_TO_MQTT:
+        print("---------------- Single MQTT Broker ----------------")
         msg = (
             f"MQTT BROKER ADDRESS: {MQTT_BROKER_ADDRESS}\n"
             f"MQTT BROKER PORT: {MQTT_BROKER_PORT}\n"
             f"MQTT USERNAME: {MQTT_USERNAME}\n"
             f"MQTT PASSWORD: {MQTT_PASSWORD}\n"
+        )
+        print(msg)
+
+        print("---------------- Multiple MQTT Broker ----------------")
+        msg = (
+            f"MQTT BROKER ADDRESS: {MQTT_BROKER_ADDRESSES}\n"
+            f"MQTT BROKER PORT: {MQTT_BROKER_PORTS}\n"
+            f"MQTT USERNAME: {MQTT_USERNAMES}\n"
+            f"MQTT PASSWORD: {MQTT_PASSWORDS}\n"
             "\n"
             f"PUBLISH_WAIT_TIME_S: {PUBLISH_WAIT_TIME_S}\n"
             f"PUBLISH_TO_CONSOLE: {PUBLISH_TO_CONSOLE}\n"
