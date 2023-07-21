@@ -87,7 +87,9 @@ class Sensor_Dev_1:
         else:
             obj.id_raw = data["id"]
             id_data = id_map.get(obj.id_raw, {})
-            obj.id_name = id_data.get("idx", "UNK ID")
+            obj.id_name = id_data.get("idx", "")
+            if obj.id_name == "":
+                obj.id_name = str(obj.id_raw)
             obj.sensor_name = id_data.get("name", "UNKNOWN")
 
         # MODEL
