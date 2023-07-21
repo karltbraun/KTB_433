@@ -25,7 +25,7 @@ MQTT_CONFIG = {
         "MQTT_PASSWORD": "",
     },
     "VULTR-01": {
-        "MQTT_BROKER_ADDRESS": "0.0.0.0",
+        "MQTT_BROKER_ADDRESS": "149.28.196.72",
         "MQTT_BROKER_PORT": 1883,
         "MQTT_USERNAME": "",
         "MQTT_PASSWORD": "",
