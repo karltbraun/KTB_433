@@ -13,20 +13,8 @@ import datetime
 import paho.mqtt.client as mqtt
 from typing import TextIO, Dict
 from temp_sensors2 import Sensor_Dev_1, SensorReadingStack
-from mqtt_secrets2 import MQTT_CONFIG
+from mqtt_secrets import MQTT_BROKER, MQTT_BROKER_ADDRESS, MQTT_BROKER_PORT, MQTT_USERNAME, MQTT_PASSWORD
 
-"""
-from mqtt_secrets import (
-    MQTT_BROKER_ADDRESS,
-    MQTT_BROKER_ADDRESSES,
-    MQTT_BROKER_PORT,
-    MQTT_BROKER_PORTS,
-    MQTT_USERNAME,
-    MQTT_USERNAMES,
-    MQTT_PASSWORD,
-    MQTT_PASSWORDS,
-)
-"""
 
 MAX_DATA_STORE_TIME: int = 1800  # Maximum data store time in seconds (30 minutes)
 MAX_STACK_SIZE: int = 10  # Maximum size of history stacks
@@ -55,9 +43,8 @@ def print_startup_info() -> None:
     print(msg)
 
     if PUBLISH_TO_MQTT:
-        print("---------------- Multiple MQTT Broker ----------------")
+        print("---------------- Single MQTT Broker ----------------")
         msg = (
-            f"MQTT Configuration: {MQTT_CONFIG}\n"
             f"PUBLISH_WAIT_TIME_S: {PUBLISH_WAIT_TIME_S}\n"
             f"PUBLISH_TO_CONSOLE: {PUBLISH_TO_CONSOLE}\n"
             f"PUBLISH_TO_FILE_TEXT: {PUBLISH_TO_FILE_TEXT}\n"
@@ -74,14 +61,20 @@ def print_startup_info() -> None:
 
 
 def trim_stack(sensor_stack: SensorReadingStack) -> None:
+    format_str = "%Y-%m-%d %H:%M:%S.%f"
     current_time: float = time.time()
 
     # Iterate over the stack and remove readings older than MAX_DATA_STORE_TIME
     while not sensor_stack.is_empty():
         oldest_reading_time_str: str = sensor_stack.peek().time_raw
-        oldest_reading_time: float = datetime.datetime.strptime(
-            oldest_reading_time_str, "%Y-%m-%d %H:%M:%S"
-        ).timestamp()
+
+        try:
+            oldest_reading_time = datetime.datetime.strptime(oldest_reading_time_str, format_str).timestamp()
+        except ValueError:
+            # If parsing with milliseconds fails, try without milliseconds
+            format_str = "%Y-%m-%d %H:%M:%S"
+            oldest_reading_time = datetime.datetime.strptime(oldest_reading_time_str, format_str).timestamp()
+
         if current_time - oldest_reading_time > MAX_DATA_STORE_TIME:
             sensor_stack.pop()
         else:
@@ -120,7 +113,6 @@ def publish_to_file_as_json(sensor_reading: Sensor_Dev_1) -> None:
 
 
 def publish_to_broker(
-    br_name: str,
     br_ip: str,
     br_port: int,
     br_user: str,
@@ -129,15 +121,17 @@ def publish_to_broker(
     payload: str,
 ) -> None:
     """does the actual publishing to a single mqtt broker"""
+
+    """
     print(f"--- I would be publishing to:")
-    print(f"\tBroker: {br_name}")
     print(f"\tIP: {br_ip}")
     print(f"\tPort: {br_port}")
     print(f"\tUser: {br_user}")
     print(f"\tPass: {br_pass}")
     print(f"\tTopic: {topic}")
     print(f"\tPayload: {payload}")
-
+    """
+    print(f"Publishing to: {br_ip}, topic: {topic}, \n  {payload}\n")
     client = mqtt.Client()
 
     # Set MQTT broker credentials
@@ -157,7 +151,7 @@ def publish_to_broker(
 # ######################### publish to all the  brokers  #########################
 
 
-def publish_to_brokers(sensor_reading: Sensor_Dev_1, mqtt_config: dict) -> None:
+def publish_to_brokers(sensor_reading: Sensor_Dev_1) -> None:
     """Function to publish the sensor reading to all active MQTT brokers"""
 
     # Get the topic leaf name
@@ -167,16 +161,15 @@ def publish_to_brokers(sensor_reading: Sensor_Dev_1, mqtt_config: dict) -> None:
     # Prepare the payload
     payload = json.dumps(sensor_reading.to_dict())
 
-    for broker in mqtt_config.values():
-        publish_to_broker(
-            br_name=broker["MQTT_BROKER_ADDRESS"],
-            br_ip=broker["MQTT_BROKER_ADDRESS"],
-            br_port=broker["MQTT_BROKER_PORT"],
-            br_user=broker["MQTT_USERNAME"],
-            br_pass=broker["MQTT_PASSWORD"],
-            topic=topic,
-            payload=payload,
-        )
+    publish_to_broker(
+        br_ip=MQTT_BROKER_ADDRESS,
+        br_port=MQTT_BROKER_PORT,
+        br_user=MQTT_USERNAME,
+        br_pass=MQTT_PASSWORD,
+        topic=topic,
+        payload=payload,
+    )
+
     return
 
 

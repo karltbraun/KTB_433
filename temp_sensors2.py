@@ -134,9 +134,9 @@ class Sensor_Dev_1:
             obj.temperature_value_f = "__"
             obj.temperature_value_c = "__"
         elif obj.temperature_value_f == "":
-            obj.temperature_value_f = round(obj.temperature_value_c * 9 / 5 + 32)
+            obj.temperature_value_f = str(round(float(obj.temperature_value_c) * 9 / 5 + 32))
         elif obj.temperature_value_c == "":
-            obj.temperature_value_c = round((obj.temperature_value_f - 32) * 5 / 9)
+            obj.temperature_value_c = str(round((float(obj.temperature_value_f) - 32) * 5 / 9))
 
         # HUMIDITY
         if "humidity" in data:
