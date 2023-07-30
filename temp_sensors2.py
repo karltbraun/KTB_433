@@ -77,7 +77,11 @@ class Sensor_Dev_1:
     @classmethod
     def from_json(cls, json_data):
         data = json.loads(json_data)
-        obj = cls(data["id"])
+        if "id" not in data:
+            print(f"No ID in Data: {data}")
+            return
+        else:
+            obj = cls(data["id"])
 
         # ID and Sensor Name
         if "id" not in data:
