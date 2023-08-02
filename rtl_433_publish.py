@@ -186,9 +186,13 @@ def publish_to_console(sensor_reading: Sensor_Dev_1) -> None:
 
 def publish_data(sensor_stacks: Dict[str, SensorReadingStack]) -> None:
     # Function to publish the data in the sensor stacks based on configuration constants
+    print("+++ Publishing Stacks")
+
     for stack in sensor_stacks.values():
         if not stack.is_empty():
             recent_reading: Sensor_Dev_1 = stack.peek()
+            # print(f"\t{recent_reading}")
+            print(f"\tid: {recent_reading.id_raw} Name: {recent_reading.sensor_name}")
 
             if PUBLISH_TO_CONSOLE:
                 publish_to_console(recent_reading)
@@ -205,6 +209,7 @@ def publish_data(sensor_stacks: Dict[str, SensorReadingStack]) -> None:
 
 # ######################### consume - store - publish  #########################
 
+#! Have the Sensor_Dev_1.from_json check for valid keys
 
 def consume_store_publish(file: TextIO) -> None:
     sensor_stacks: Dict[str, SensorReadingStack] = {}
@@ -217,10 +222,17 @@ def consume_store_publish(file: TextIO) -> None:
 
         if line:
             sensor_reading: Sensor_Dev_1 = Sensor_Dev_1.from_json(line)
+            print(f"*** Reading sensor:\n{sensor_reading}")
+            sensor_id = sensor_reading.id_raw
 
-            sensor_id: str = sensor_reading.id_raw
+            #! a check for non temp sensors should be made here
+            if sensor_reading.id_raw == "":
+                print("---- ignoring device")
+                continue # for now, we ignore the line
+
             if sensor_id not in sensor_stacks:
                 sensor_stacks[sensor_id] = SensorReadingStack(MAX_STACK_SIZE)
+
             sensor_stack: SensorReadingStack = sensor_stacks[sensor_id]
             sensor_stack.push(sensor_reading)
 

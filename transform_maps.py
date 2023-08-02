@@ -7,27 +7,27 @@ model_map = {
 
 id_map = {
     169: {
-        "idx": "SC91-A",
-        "name": "OFC-A",
+        "id_sensor_name": "SC91-A",
+        "sensor_name": "OFC-A",
     },
     167: {
-        "idx": "SC91-B",
-        "name": "PATIO-B",
+        "id_sensor_name": "SC91-B",
+        "sensor_name": "PATIO-B",
     },
     211: {
-        "idx": "SC91-C",
-        "name": "PATIO-C",
+        "id_sensor_name": "SC91-C",
+        "sensor_name": "PATIO-C",
     },
     49: {
-        "idx": "ACRT-01",
-        "name": "BRZWY-ACRT",
+        "id_sensor_name": "ACRT-01",
+        "sensor_name": "BRZWY-ACRT",
     },
     98: {
-        "idx": "ACRT-02",
-        "name": "PORCH-ACRT",
+        "id_sensor_name": "ACRT-02",
+        "sensor_name": "PORCH-ACRT",
     },
     132: {
-        "idx": "ACRT-02",
-        "name": "PORCH-ACRT",
+        "id_sensor_name": "ACRT-02",
+        "sensor_name": "PORCH-ACRT",
     },
 }

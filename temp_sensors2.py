@@ -74,27 +74,37 @@ class Sensor_Dev_1:
             f"{self.integrity:<{self.fldsiz_integrity}}"
         )
 
+    # ###############################################################################
+    #                               class methods                                   #
+    # ###############################################################################
+
+    # ############################ from_json #################################
+
     @classmethod
-    def from_json(cls, json_data):
+    def from_json(cls, json_data: dict):
+        print("---------")
+        print(f"Creating sensor object from:\n{json_data}")
+        sensor_obj = cls("<TMP>") # create object with temp ID
+
+        #! maybe this should be in transform_maps
+        dummy_sensor_id_map_data = {
+            "id_sensor_name": "UNK S_ID",
+            "sensor_name": "UNK SENSOR",
+        }
+
         data = json.loads(json_data)
-        if "id" not in data:
-            print(f"No ID in Data: {data}")
-            return
-        else:
-            obj = cls(data["id"])
 
         # ID and Sensor Name
         if "id" not in data:
-            obj.id_raw = "___"
-            obj.id_name = "NO_ID"
-            obj.sensor_name = "_____"
+            sensor_obj.id_raw = ""
+            sensor_obj.id_name = "NO_ID"
+            sensor_obj.sensor_name = "UNKN SENSOR"
         else:
-            obj.id_raw = data["id"]
-            id_data = id_map.get(obj.id_raw, {})
-            obj.id_name = id_data.get("idx", "")
-            if obj.id_name == "":
-                obj.id_name = str(obj.id_raw)
-            obj.sensor_name = id_data.get("name", "UNKNOWN")
+            sensor_obj.id_raw = data["id"]
+            sensor_id_data = id_map.get(sensor_obj.id_raw, dummy_sensor_id_map_data)
+            print(f"<<< type: {type(sensor_id_data)} - {sensor_id_data}")
+            sensor_obj.id_name = sensor_id_data["id_sensor_name"]
+            sensor_obj.sensor_name = sensor_id_data["sensor_name"]
 
         # MODEL
         if "model" not in data:
@@ -102,71 +112,67 @@ class Sensor_Dev_1:
         else:
             model_raw = data["model"]
             model_name = model_map.get(model_raw.upper(), "UKN MODEL")
-            obj.model_raw = model_raw
-            obj.model_name = model_name
+            sensor_obj.model_raw = model_raw
+            sensor_obj.model_name = model_name
 
         # TIME
-        obj.time_raw = data["time"]
-        obj.time_date, obj.time_time = obj.time_raw.split()
+        sensor_obj.time_raw = data["time"]
+        sensor_obj.time_date,sensor_obj.time_time =sensor_obj.time_raw.split()
 
         # CHANNEL
-        obj.channel = "CH?"
+        sensor_obj.channel = "CH?"
         if "channel" in data:
-            obj.channel = data["channel"]
+            sensor_obj.channel = data["channel"]
 
         # BATTERY
-        obj.batter = "BAT?"
+        sensor_obj.batter = "BAT?"
         if "battery_ok" in data:
-            obj.battery = "OK"
+            sensor_obj.battery = "OK"
             if data["battery_ok"] != "1":
-                obj.battery = "LOW"
+                sensor_obj.battery = "LOW"
 
         # TEMPERATURE
         if "temperature_F" in data:
-            obj.temperature_raw = (
-                obj.temperature_value_f
+            sensor_obj.temperature_raw = (
+               sensor_obj.temperature_value_f
             )  # assume fahrenheit holds the raw value
-            obj.temperature_value_f = round_str_value(data["temperature_F"])
+            sensor_obj.temperature_value_f = round_str_value(data["temperature_F"])
         if "temperature_C" in data:
             # if both F and C values are present, assume the C value is the 'raw' value
-            obj.temperature_raw = obj.temperature_value_c
-            obj.temperature_value_c = round_str_value(data["temperature_C"])
+           sensor_obj.temperature_raw =sensor_obj.temperature_value_c
+           sensor_obj.temperature_value_c = round_str_value(data["temperature_C"])
         # if we have no temperature readings, make the values indicate that
         # if we have an F reading or a C reading, but not the other, calculate the missing value
-        if obj.temperature_value_f == "" and obj.temperature_value_c == "":
-            obj.temperature_raw = "__"
-            obj.temperature_value_f = "__"
-            obj.temperature_value_c = "__"
-        elif obj.temperature_value_f == "":
-            obj.temperature_value_f = str(round(float(obj.temperature_value_c) * 9 / 5 + 32))
-        elif obj.temperature_value_c == "":
-            obj.temperature_value_c = str(round((float(obj.temperature_value_f) - 32) * 5 / 9))
+        if sensor_obj.temperature_value_f == "" and sensor_obj.temperature_value_c == "":
+            sensor_obj.temperature_raw = "__"
+            sensor_obj.temperature_value_f = "__"
+            sensor_obj.temperature_value_c = "__"
+        elif sensor_obj.temperature_value_f == "":
+            sensor_obj.temperature_value_f = str(round(float(sensor_obj.temperature_value_c) * 9 / 5 + 32))
+        elif sensor_obj.temperature_value_c == "":
+            sensor_obj.temperature_value_c = str(round((float(sensor_obj.temperature_value_f) - 32) * 5 / 9))
 
         # HUMIDITY
         if "humidity" in data:
-            obj.humidity_raw = data["humidity"]
+            sensor_obj.humidity_raw = data["humidity"]
         else:
-            obj.humidity_raw = "__"
-        obj.humidity_value = (
-            obj.humidity_raw
+            sensor_obj.humidity_raw = "__"
+        sensor_obj.humidity_value = (
+            sensor_obj.humidity_raw
         )  # right now, no transformation for humidity
 
         # INTEGRITY
         if "mic" in data:
-            obj.integrity = data["mic"]
+            sensor_obj.integrity = data["mic"]
         else:
-            obj.integrity = "__"
-        if obj.integrity == "CHECKSUM":
-            obj.integrity = "CRC"
+            sensor_obj.integrity = "__"
+        if sensor_obj.integrity == "CHECKSUM":
+            sensor_obj.integrity = "CRC"
 
-        return obj
+        return sensor_obj
 
-    model_map = {
-        "ACURITE-606TX": "ACURITE-606TX",
-        "INFACTORY-TH": "SMARTRO-SC91",
-    }
 
-    id_map = {"169": "SC91-A", "167": "SC91-B", "211": "SC91-C", "49": "ACRT-01"}
+# ############################ to_dict  #################################
 
     def to_dict(self):
         dct = {
@@ -219,3 +225,4 @@ class SensorReadingStack:
 
     def size(self):
         return len(self.stack)
+
