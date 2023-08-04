@@ -4,7 +4,7 @@
 
 # Define the duration and pause time in seconds
 DURATION=120
-PAUSE_TIME=180
+PAUSE_TIME=15
 
 # Run rtl_433 command in the background and pipe the output to your Python scripts
 echo "-------------- Starting rtl_433 --------------"
