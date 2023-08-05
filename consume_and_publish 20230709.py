@@ -1,7 +1,7 @@
 import sys
 import json
 from dataclasses import dataclass
-from temp_sensors import Sensor_Dev_1
+from temp_sensors1 import Sensor_Dev_1
 from typing import List, Tuple
 
 """
