@@ -15,7 +15,7 @@ import logging
 import paho.mqtt.client as mqtt
 from typing import List, Tuple, Dict
 from transform_maps import id_map, model_map
-from temp_sensors import Sensor_Dev_1 as Sensor
+from temp_sensors1 import Sensor_Dev_1 as Sensor
 
 from mqtt_secrets import (
     MQTT_BROKER_ADDRESS,

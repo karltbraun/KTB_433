@@ -1,5 +1,5 @@
 import sys
-from temp_sensors2 import Sensor_Dev_1
+from temp_sensors import Sensor_Dev_1
 
 # ########################### MAIN #########################
 
