@@ -11,8 +11,9 @@ import json
 import time
 import datetime
 import paho.mqtt.client as mqtt
+from pprint import pprint
 from typing import TextIO, Dict
-from temp_sensors2 import Sensor_Dev_1, SensorReadingStack
+from temp_sensors import Sensor_Dev_1, SensorReadingStack
 from mqtt_secrets import MQTT_BROKER, MQTT_BROKER_ADDRESS, MQTT_BROKER_PORT, MQTT_USERNAME, MQTT_PASSWORD
 
 
@@ -178,7 +179,7 @@ def publish_to_brokers(sensor_reading: Sensor_Dev_1) -> None:
 
 def publish_to_console(sensor_reading: Sensor_Dev_1) -> None:
     # Function to publish the sensor reading to the console
-    print(sensor_reading)
+    pprint(sensor_reading)
 
 
 # ######################### publish data #########################
