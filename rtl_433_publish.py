@@ -47,7 +47,7 @@ log_file = DEFAULT_LOGFILE_FILESPECT
 
 # Create logger
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEFAULT_LOGGING_LEVEL)  # Or any level you desire
+logger.setLevel(DEFAULT_LOGGING_LEVEL)  
 
 # Create a rotating file handler which rotates log files
 handler = RotatingFileHandler(log_file, maxBytes=MAX_LOGFILE_SIZE, backupCount=5)
