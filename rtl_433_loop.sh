@@ -6,8 +6,10 @@
 DURATION=120
 PAUSE_TIME=15
 
+# Log the starting message
+logger -t rtl_433_loop.sh -p info "Starting rtl_433"
+
 # Run rtl_433 command in the background and pipe the output to your Python scripts
-echo "-------------- Starting rtl_433 --------------"
 rtl_433 -F json | python3 rtl_433_publish.py &
 
 # Get the PID of the rtl_433 process
@@ -17,14 +19,19 @@ while true; do
     # Sleep for the specified duration
     sleep $DURATION
 
+    # Log the pause message
+    logger -t rtl_433_loop.sh -p debug "Pausing rtl_433"
+
     # Pause the rtl_433 process by sending a SIGSTOP signal
-    echo "-------------- Pausing rtl_433 --------------"
     kill -SIGSTOP $RTL_PID
 
     # Sleep for the specified pause time
     sleep $PAUSE_TIME
 
+    # Log the resume message
+    logger -t rtl_433_loop.sh -p debug "Resuming rtl_433"
+
     # Resume the rtl_433 process by sending a SIGCONT signal
-    echo "-------------- Resuming rtl_433 --------------"
     kill -SIGCONT $RTL_PID
 done
+
