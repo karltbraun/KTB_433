@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass
 from transform_maps import model_map, id_map
-from pprint import pprint
+# from pprint import pprint
 
 # ######################### round string value  #########################
 
@@ -92,9 +92,9 @@ class Sensor_Dev_1:
         }
 
         data = json.loads(json_data)
-        print("---------")
-        print("Creating sensor object from:")
-        pprint(data)
+        # print("---------")
+        # print("Creating sensor object from:")
+        # pprint(data)
 
         # ID and Sensor Name
         if "id" not in data:
