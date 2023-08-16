@@ -8,6 +8,7 @@
 """
 import sys
 import json
+import socket
 import time
 import datetime
 import logging
@@ -27,6 +28,8 @@ from mqtt_secrets import MQTT_BROKER, MQTT_BROKER_ADDRESS, MQTT_BROKER_PORT, MQT
 
 MAX_DATA_STORE_TIME: int = 1800  # Maximum data store time in seconds (30 minutes)
 MAX_STACK_SIZE: int = 10  # Maximum size of history stacks
+MAX_MQTT_CONNECT_RETRIES = 3
+MQTT_RETRY_WAIT_SECONDS = 5
 
 PUBLISH_WAIT_TIME_S: int = 60  # Time between publishing to MQTT broker
 PUBLISH_TO_CONSOLE: bool = True
@@ -139,37 +142,80 @@ def publish_to_file_as_json(sensor_reading: Sensor_Dev_1) -> None:
     return
 
 
-# ######################### publish to MQTT  #########################
+# ###################################################################### #
+#                             MQTT Routines                              #
+# ###################################################################### #
 
+
+# ######################### handle an MQTT Operation  #########################
+
+def handle_mqtt_operation(operation, error_message):
+    try:
+        operation()
+    except Exception as e:
+        logger.error(f"{error_message}: {e}")
+        raise
+
+# ######################### connect to broker  #########################
+
+def connect_to_broker(client, br_ip, br_port):
+    retries = 0
+    while retries < MAX_MQTT_CONNECT_RETRIES:
+        try:
+            client.connect(br_ip, br_port)
+            return
+        except socket.gaierror as e:
+            retries += 1
+            logger.warning(f"Failed to connect to {br_ip}:{br_port} due to DNS error. Retry {retries}/{MAX_MQTT_CONNECT_RETRIES}.")
+            time.sleep(MQTT_RETRY_WAIT_SECONDS)
+        except Exception as e:
+            logger.error(f"Unexpected error connecting to {br_ip}:{br_port}: {e}")
+            raise
+    raise Exception(f"Failed to connect to {br_ip}:{br_port} after {MAX_MQTT_CONNECT_RETRIES} retries.")
+
+# ######################### set MQTT Broker Credentials  #########################
+
+def set_credentials(client, br_user, br_pass):
+    handle_mqtt_operation(
+        lambda: client.username_pw_set(br_user, br_pass),
+        "Exception on mqtt client credential instantiation"
+    )
+
+
+# ######################### publish an MQTT Message  #########################
+
+def publish_message(client, topic, payload):
+    handle_mqtt_operation(
+        lambda: client.publish(topic, payload),
+        "Error publishing mqtt message"
+    )
+
+
+# ######################### Disconnect from MQTT Broker  #########################
+
+def disconnect_from_broker(client):
+    handle_mqtt_operation(
+        lambda: client.disconnect(),
+        "Error disconnecting from broker"
+    )
 
 # ######################### publish to a single broker  #########################
 
 
-def publish_to_broker(
-    br_ip: str,
-    br_port: int,
-    br_user: str,
-    br_pass: str,
-    topic: str,
-    payload: str,
-) -> None:
-    """does the actual publishing to a single mqtt broker"""
-
+def publish_to_broker(br_ip, br_port, br_user, br_pass, topic, payload):
     logger.info(f"Publishing to: {br_ip}, topic: {topic}, \n  {payload}\n")
+
     client = mqtt.Client()
 
-    # Set MQTT broker credentials
-    client.username_pw_set(br_user, br_pass)
+    set_credentials(client, br_user, br_pass)
+    connect_to_broker(client, br_ip, br_port)
 
-    # Connect to MQTT broker
-    client.connect(br_ip, br_port)
+    client.loop_start()
 
-    # Publish the payload to a specific MQTT topic
-    client.publish(topic, payload)
+    publish_message(client, topic, payload)
+    disconnect_from_broker(client)
 
-    # Disconnect from MQTT broker
-    client.disconnect()
-    return
+    client.loop_stop()
 
 
 # ######################### publish to all the  brokers  #########################
