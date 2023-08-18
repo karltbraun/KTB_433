@@ -185,6 +185,7 @@ def set_credentials(client, br_user, br_pass):
 # ######################### publish an MQTT Message  #########################
 
 def publish_message(client, topic, payload):
+    logger.DEBUG(f"Publishing: {payload}")
     handle_mqtt_operation(
         lambda: client.publish(topic, payload),
         "Error publishing mqtt message"
