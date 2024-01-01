@@ -12,18 +12,24 @@ import socket
 import time
 import datetime
 import logging
+import bounded_stack as bs
 from logging.handlers import RotatingFileHandler
 import paho.mqtt.client as mqtt
 from pprint import pprint
 from typing import TextIO, Dict
-from temp_sensors import Sensor_Dev_1, SensorReadingStack
-from mqtt_secrets import MQTT_BROKER, MQTT_BROKER_ADDRESS, MQTT_BROKER_PORT, MQTT_USERNAME, MQTT_PASSWORD
+from temp_sensors import Sensor_Dev_1, SensorStacks
+from mqtt_secrets import (
+    MQTT_BROKER,
+    MQTT_BROKER_ADDRESS,
+    MQTT_BROKER_PORT,
+    MQTT_USERNAME,
+    MQTT_PASSWORD,
+)
 
 
 # ###################################################################### #
 #                       constants and environment                        #
 # ###################################################################### #
-
 
 
 MAX_DATA_STORE_TIME: int = 1800  # Maximum data store time in seconds (30 minutes)
@@ -42,7 +48,7 @@ DEFAULT_LOGGING_LEVEL = logging.DEBUG
 DEFAULT_LOGFILE_PATH = "/home/karl/Logs"
 DEFAULT_LOGFILE_FILENAME = "rtl_433_publish.log"
 DEFAULT_LOGFILE_FILESPECT = f"{DEFAULT_LOGFILE_PATH}/{DEFAULT_LOGFILE_FILENAME}"
-MAX_LOGFILE_SIZE = 10*1024*1024
+MAX_LOGFILE_SIZE = 10 * 1024 * 1024
 
 # ######################### setup logger  #########################
 
@@ -50,11 +56,11 @@ log_file = DEFAULT_LOGFILE_FILESPECT
 
 # Create logger
 logger = logging.getLogger(__name__)
-logger.setLevel(DEFAULT_LOGGING_LEVEL)  
+logger.setLevel(DEFAULT_LOGGING_LEVEL)
 
 # Create a rotating file handler which rotates log files
 handler = RotatingFileHandler(log_file, maxBytes=MAX_LOGFILE_SIZE, backupCount=5)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 
 # Add the handler to logger
@@ -67,15 +73,16 @@ def print_startup_info() -> None:
     BORDER_SIZE: int = 80
 
     msg = (
-        "\n" + "*" * BORDER_SIZE + "\n" +
-        f"PUBLISHING TO CONSOLE: {PUBLISH_TO_CONSOLE}\n"
+        "\n"
+        + "*" * BORDER_SIZE
+        + "\n"
+        + f"PUBLISHING TO CONSOLE: {PUBLISH_TO_CONSOLE}\n"
         f"PUBLISHING TO FILE (TEXT): {PUBLISH_TO_FILE_TEXT}\n"
         f"PUBLISHING TO FILE (JSON): {PUBLISH_TO_FILE_JSON}\n"
         f"PUBLISHING TO MQTT: {PUBLISH_TO_MQTT}\n"
     )
 
     logger.info(msg)
-
 
     if PUBLISH_TO_MQTT:
         msg = (
@@ -88,7 +95,7 @@ def print_startup_info() -> None:
         )
         logger.info(msg)
 
-    msg = ("\n" + "*" * BORDER_SIZE + "\n" )
+    msg = "\n" + "*" * BORDER_SIZE + "\n"
     logger.info(msg)
     return
 
@@ -96,7 +103,7 @@ def print_startup_info() -> None:
 # ######################### trim a specific stack  #########################
 
 
-def trim_stack(sensor_stack: SensorReadingStack) -> None:
+def trim_stack(sensor_stack: SensorStacks) -> None:
     format_str = "%Y-%m-%d %H:%M:%S.%f"
     current_time: float = time.time()
 
@@ -105,11 +112,15 @@ def trim_stack(sensor_stack: SensorReadingStack) -> None:
         oldest_reading_time_str: str = sensor_stack.peek().time_raw
 
         try:
-            oldest_reading_time = datetime.datetime.strptime(oldest_reading_time_str, format_str).timestamp()
+            oldest_reading_time = datetime.datetime.strptime(
+                oldest_reading_time_str, format_str
+            ).timestamp()
         except ValueError:
             # If parsing with milliseconds fails, try without milliseconds
             format_str = "%Y-%m-%d %H:%M:%S"
-            oldest_reading_time = datetime.datetime.strptime(oldest_reading_time_str, format_str).timestamp()
+            oldest_reading_time = datetime.datetime.strptime(
+                oldest_reading_time_str, format_str
+            ).timestamp()
 
         if current_time - oldest_reading_time > MAX_DATA_STORE_TIME:
             sensor_stack.pop()
@@ -120,7 +131,7 @@ def trim_stack(sensor_stack: SensorReadingStack) -> None:
 # ######################### trim all stacks  #########################
 
 
-def trim_all_stacks(sensor_stacks: Dict[str, SensorReadingStack]) -> None:
+def trim_all_stacks(sensor_stacks: Dict[str, SensorStacks]) -> None:
     # Iterate over all the sensor stacks and call trim_stack for each stack
     for stack in sensor_stacks.values():
         trim_stack(stack)
@@ -149,6 +160,7 @@ def publish_to_file_as_json(sensor_reading: Sensor_Dev_1) -> None:
 
 # ######################### handle an MQTT Operation  #########################
 
+
 def handle_mqtt_operation(operation, error_message):
     try:
         operation()
@@ -156,7 +168,9 @@ def handle_mqtt_operation(operation, error_message):
         logger.error(f"{error_message}: {e}")
         raise
 
+
 # ######################### connect to broker  #########################
+
 
 def connect_to_broker(client, br_ip, br_port):
     retries = 0
@@ -166,39 +180,46 @@ def connect_to_broker(client, br_ip, br_port):
             return
         except socket.gaierror as e:
             retries += 1
-            logger.warning(f"Failed to connect to {br_ip}:{br_port} due to DNS error. Retry {retries}/{MAX_MQTT_CONNECT_RETRIES}.")
+            logger.warning(
+                f"Failed to connect to {br_ip}:{br_port} due to DNS error. Retry {retries}/{MAX_MQTT_CONNECT_RETRIES}."
+            )
             time.sleep(MQTT_RETRY_WAIT_SECONDS)
         except Exception as e:
             logger.error(f"Unexpected error connecting to {br_ip}:{br_port}: {e}")
             raise
-    raise Exception(f"Failed to connect to {br_ip}:{br_port} after {MAX_MQTT_CONNECT_RETRIES} retries.")
+    raise Exception(
+        f"Failed to connect to {br_ip}:{br_port} after {MAX_MQTT_CONNECT_RETRIES} retries."
+    )
+
 
 # ######################### set MQTT Broker Credentials  #########################
+
 
 def set_credentials(client, br_user, br_pass):
     handle_mqtt_operation(
         lambda: client.username_pw_set(br_user, br_pass),
-        "Exception on mqtt client credential instantiation"
+        "Exception on mqtt client credential instantiation",
     )
 
 
 # ######################### publish an MQTT Message  #########################
 
+
 def publish_message(client, topic, payload):
     logger.DEBUG(f"Publishing: {payload}")
     handle_mqtt_operation(
-        lambda: client.publish(topic, payload),
-        "Error publishing mqtt message"
+        lambda: client.publish(topic, payload), "Error publishing mqtt message"
     )
 
 
 # ######################### Disconnect from MQTT Broker  #########################
 
+
 def disconnect_from_broker(client):
     handle_mqtt_operation(
-        lambda: client.disconnect(),
-        "Error disconnecting from broker"
+        lambda: client.disconnect(), "Error disconnecting from broker"
     )
+
 
 # ######################### publish to a single broker  #########################
 
@@ -255,14 +276,16 @@ def publish_to_console(sensor_reading: Sensor_Dev_1) -> None:
 # ######################### publish data #########################
 
 
-def publish_data(sensor_stacks: Dict[str, SensorReadingStack]) -> None:
+def publish_data(sensor_stacks: Dict[SensorStacks]) -> None:
     # Function to publish the data in the sensor stacks based on configuration constants
     logger.debug("+++ Publishing Stacks")
 
     for stack in sensor_stacks.values():
         if not stack.is_empty():
-            recent_reading: Sensor_Dev_1 = stack.peek()
-            logger.debug(f"\tid: {recent_reading.id_raw} Name: {recent_reading.sensor_name}")
+            recent_reading: Sensor_Dev_1 = stack.pop()
+            logger.debug(
+                f"\tid: {recent_reading.id_raw} Name: {recent_reading.sensor_name}"
+            )
 
             if PUBLISH_TO_CONSOLE:
                 publish_to_console(recent_reading)
@@ -281,8 +304,9 @@ def publish_data(sensor_stacks: Dict[str, SensorReadingStack]) -> None:
 
 #! Have the Sensor_Dev_1.from_json check for valid keys
 
+
 def consume_store_publish(file: TextIO) -> None:
-    sensor_stacks: Dict[str, SensorReadingStack] = {}
+    sensor_stacks = SensorStacks(MAX_STACK_SIZE)
     last_publish_time: float = time.time()
 
     print_startup_info()
@@ -292,19 +316,16 @@ def consume_store_publish(file: TextIO) -> None:
 
         if line:
             sensor_reading: Sensor_Dev_1 = Sensor_Dev_1.from_json(line)
-            logger.debug(f"*** Reading sensor:\n{sensor_reading}")
+            logger.debug(f"##@ Reading sensor:\n{sensor_reading}")
+
             sensor_id = sensor_reading.id_raw
+            if sensor_id == "":
+                logger.info("---- ignoring device")
+                continue  # for now, we ignore the line ============================^
 
             #! a check for non temp sensors should be made here
-            if sensor_reading.id_raw == "":
-                logger.info("---- ignoring device")
-                continue # for now, we ignore the line
 
-            if sensor_id not in sensor_stacks:
-                sensor_stacks[sensor_id] = SensorReadingStack(MAX_STACK_SIZE)
-
-            sensor_stack: SensorReadingStack = sensor_stacks[sensor_id]
-            sensor_stack.push(sensor_reading)
+            sensor_stacks.add_reading(sensor_id, sensor_reading)
 
         current_time: float = time.time()
         if current_time - last_publish_time >= PUBLISH_WAIT_TIME_S:
@@ -316,11 +337,12 @@ def consume_store_publish(file: TextIO) -> None:
 
 # ######################### setup logging  #########################
 
+
 def setup_logging(log_level=DEFAULT_LOGGING_LEVEL):
     logger = logging.getLogger()
     logger.setLevel(log_level)
 
-    log_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    log_format = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 
     stream_handler = logging.StreamHandler()
     stream_handler.setFormatter(log_format)
@@ -336,7 +358,9 @@ def setup_logging(log_level=DEFAULT_LOGGING_LEVEL):
 
 
 def main() -> None:
-    setup_logging(DEFAULT_LOGGING_LEVEL)  # Set up logging first with your default logging level
+    setup_logging(
+        DEFAULT_LOGGING_LEVEL
+    )  # Set up logging first with your default logging level
     consume_store_publish(sys.stdin)
 
 
