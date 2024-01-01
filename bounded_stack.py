@@ -7,7 +7,7 @@ class BoundedStack:
     def __init__(self, stacksize=DEFAULT_MAX_STACK_SIZE):
         self.container = deque(maxlen=stacksize)
 
-    def size(self):
+    def __len__(self):
         return len(self.container)
 
     def push(self, item):
