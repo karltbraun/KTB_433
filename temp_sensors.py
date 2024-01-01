@@ -53,6 +53,7 @@ class Sensor_Dev_1:
 
     def __str__(self):
         def format1() -> str:
+            """ Original Formatting """
             return (
                 f"{self.id_name:<{self.fldsiz_id_name}}"
                 f"{self.sensor_name:<{self.fldsiz_sensor_name}}"
