@@ -1,7 +1,8 @@
 import json
+import bounded_stack as bs
 from dataclasses import dataclass
 from transform_maps import model_map, id_map
-# from pprint import pprint
+from collections import deque
 
 # ######################### round string value  #########################
 
@@ -51,29 +52,43 @@ class Sensor_Dev_1:
         self.integrity: str = ""
 
     def __str__(self):
+        def format1() -> str:
+            return (
+                f"{self.id_name:<{self.fldsiz_id_name}}"
+                f"{self.sensor_name:<{self.fldsiz_sensor_name}}"
+                f"'{self.model_raw:<{self.fldsiz_model_raw}}'"
+                f"{self.model_name:<{self.fldsiz_model_name}}"
+                f"'{self.time_raw:<{self.fldsiz_time_raw}}'"
+                f"{self.time_date:<{self.fldsiz_time_date}}"
+                f"{self.time_time:<{self.fldsiz_time_time}}"
+                f"'{self.temperature_raw:<{self.fldsiz_temperature_raw}}'"
+                f"{self.temperature_value_f:<{self.fldsiz_temperature_value}}"
+                f"{self.temperature_value_c:<{self.fldsiz_temperature_value}}"
+                f"'{self.humidity_raw:<{self.fldsiz_humidity_raw}}'"
+                f"{self.humidity_value:<{self.fldsiz_humidity_value}}"
+                f"{self.channel:^{self.fldsiz_channel}}"
+                f"{self.battery:<{self.fldsiz_battery}}"
+                f"{self.integrity:<{self.fldsiz_integrity}}"
+            )
+
+        def format2() -> str:
+            return (
+                f"ID:   {self.id_raw:<20}ID_NAME: {self.id_name:<{self.fldsiz_id_name}}"
+                f"Name: {self.sensor_name:<20}Model Raw: {self.model_raw:<20}Model Name: {self.model_name:<20}"
+                f"TimeR:{self.time_raw:<20}Date: {self.time_date:<20}Time: {self.time_time:<20}"
+                f"TempR:{self.temperature_raw:<20}TempF: {self.temperature_value_f:<20}TempC: {self.temperature_value_c:<20}"
+                f"Hum_R:{self.humidity_raw:<20}Hum_V: {self.humidity_value:<20}"
+                f"Chan: {self.channel:<20}Batt: {self.battery:<20}Integ: {self.integrity:<20}"
+            )
+
         temperature_raw = f"'{self.temperature_raw}'"
         temperature_F = f"{self.temperature_value_f} F"
         temperature_C = f"{self.temperature_value_c} C"
         humidity_raw = f"'{self.humidity_raw}'"
         humidity_value = f"{self.humidity_value} %"
         time_raw = f"'{self.time_raw}'"
-        return (
-            f"{self.id_name:<{self.fldsiz_id_name}}"
-            f"{self.sensor_name:<{self.fldsiz_sensor_name}}"
-            f"'{self.model_raw:<{self.fldsiz_model_raw}}'"
-            f"{self.model_name:<{self.fldsiz_model_name}}"
-            f"{time_raw:<{self.fldsiz_time_raw}}"
-            f"{self.time_date:<{self.fldsiz_time_date}}"
-            f"{self.time_time:<{self.fldsiz_time_time}}"
-            f"{temperature_raw:<{self.fldsiz_temperature_raw}}"
-            f"{temperature_F:<{self.fldsiz_temperature_value}}"
-            f"{temperature_C:<{self.fldsiz_temperature_value}}"
-            f"{humidity_raw:<{self.fldsiz_humidity_raw}}"
-            f"{humidity_value:<{self.fldsiz_humidity_value}}"
-            f"{self.channel:^{self.fldsiz_channel}}"
-            f"{self.battery:<{self.fldsiz_battery}}"
-            f"{self.integrity:<{self.fldsiz_integrity}}"
-        )
+        # return format1()
+        return format2()
 
     # ###############################################################################
     #                               class methods                                   #
@@ -83,7 +98,7 @@ class Sensor_Dev_1:
 
     @classmethod
     def from_json(cls, json_data: dict):
-        sensor_obj = cls("<TMP>") # create object with temp ID
+        sensor_obj = cls("<TMP>")  # create object with temp ID
 
         #! maybe this should be in transform_maps
         dummy_sensor_id_map_data = {
@@ -119,7 +134,7 @@ class Sensor_Dev_1:
 
         # TIME
         sensor_obj.time_raw = data["time"]
-        sensor_obj.time_date,sensor_obj.time_time =sensor_obj.time_raw.split()
+        sensor_obj.time_date, sensor_obj.time_time = sensor_obj.time_raw.split()
 
         # CHANNEL
         sensor_obj.channel = "CH?"
@@ -136,23 +151,30 @@ class Sensor_Dev_1:
         # TEMPERATURE
         if "temperature_F" in data:
             sensor_obj.temperature_raw = (
-               sensor_obj.temperature_value_f
+                sensor_obj.temperature_value_f
             )  # assume fahrenheit holds the raw value
             sensor_obj.temperature_value_f = round_str_value(data["temperature_F"])
         if "temperature_C" in data:
             # if both F and C values are present, assume the C value is the 'raw' value
-           sensor_obj.temperature_raw =sensor_obj.temperature_value_c
-           sensor_obj.temperature_value_c = round_str_value(data["temperature_C"])
+            sensor_obj.temperature_raw = sensor_obj.temperature_value_c
+            sensor_obj.temperature_value_c = round_str_value(data["temperature_C"])
         # if we have no temperature readings, make the values indicate that
         # if we have an F reading or a C reading, but not the other, calculate the missing value
-        if sensor_obj.temperature_value_f == "" and sensor_obj.temperature_value_c == "":
+        if (
+            sensor_obj.temperature_value_f == ""
+            and sensor_obj.temperature_value_c == ""
+        ):
             sensor_obj.temperature_raw = "__"
             sensor_obj.temperature_value_f = "__"
             sensor_obj.temperature_value_c = "__"
         elif sensor_obj.temperature_value_f == "":
-            sensor_obj.temperature_value_f = str(round(float(sensor_obj.temperature_value_c) * 9 / 5 + 32))
+            sensor_obj.temperature_value_f = str(
+                round(float(sensor_obj.temperature_value_c) * 9 / 5 + 32)
+            )
         elif sensor_obj.temperature_value_c == "":
-            sensor_obj.temperature_value_c = str(round((float(sensor_obj.temperature_value_f) - 32) * 5 / 9))
+            sensor_obj.temperature_value_c = str(
+                round((float(sensor_obj.temperature_value_f) - 32) * 5 / 9)
+            )
 
         # HUMIDITY
         if "humidity" in data:
@@ -173,8 +195,7 @@ class Sensor_Dev_1:
 
         return sensor_obj
 
-
-# ############################ to_dict  #################################
+    # ############################ to_dict  #################################
 
     def to_dict(self):
         dct = {
@@ -197,34 +218,27 @@ class Sensor_Dev_1:
         return dct
 
 
-# ################ Sensor Reading Stack ################
-class SensorReadingStack:
-    def __init__(self, max_size):
-        self.max_size = max_size
-        self.stack = []
+# ######################### Sensor Stacks #########################
 
-    def push(self, sensor_reading):
-        self.stack.append(sensor_reading)
-        if len(self.stack) > self.max_size:
-            self.stack = self.stack[
-                -self.max_size :
-            ]  # Trim the stack to the specified size
 
-    def pop(self):
-        if self.stack:
-            return self.stack.pop()
-        else:
-            return None
+class SensorStacks(dict):
+    def __init__(self, max_history=100):
+        super().__init__()
+        self.max_history = max_history
 
-    def peek(self):
-        if self.stack:
-            return self.stack[-1]
-        else:
-            return None
+    def add_reading(self, sensor_id, reading):
+        if sensor_id not in self:
+            self[sensor_id] = bs.BoundedStack(self.max_history)
+        self[sensor_id].push(reading)
 
-    def is_empty(self):
-        return len(self.stack) == 0
+    def pop(self, sensor_id):
+        return self[sensor_id].pop()
 
-    def size(self):
-        return len(self.stack)
+    def size(self, sensor_id):
+        return len(self[sensor_id])
 
+    def get_all(self, sensor_id):
+        return self[sensor_id].get_all()
+
+    def clear(self, sensor_id):
+        return self[sensor_id].clear()
